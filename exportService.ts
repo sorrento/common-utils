@@ -1,11 +1,15 @@
 /**
- * Reusable Export Service for PDF and Excel documents
- * Elegant styling, multi-sheet Excel generation, crisp HTML2Canvas PDF exports.
+ * Reusable & Modular Export Service for PDF and Excel documents
+ * Common Utils Package
  */
 
 import ExcelJS from 'exceljs';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+
+/* ==========================================================================
+   TYPE DEFINITIONS
+   ========================================================================== */
 
 export interface KpiExportItem {
   label: string;
@@ -22,6 +26,20 @@ export interface TableExportSection {
   note?: string;
 }
 
+export interface KeyValueItem {
+  label: string;
+  value: string | number;
+}
+
+export type PdfContentBlock = 
+  | { type: 'paragraph'; text: string; bold?: boolean; color?: string }
+  | { type: 'heading'; text: string; level?: 1 | 2 | 3 }
+  | { type: 'kv-list'; items: KeyValueItem[]; title?: string }
+  | { type: 'table'; section: TableExportSection }
+  | { type: 'kpis'; items: KpiExportItem[] }
+  | { type: 'divider' }
+  | { type: 'space'; heightPx?: number };
+
 export interface PdfExportOptions {
   title: string;
   subtitle?: string;
@@ -29,14 +47,18 @@ export interface PdfExportOptions {
   generatedBy?: string;
   brandName?: string;
   brandTagline?: string;
+  themeColor?: string;
+  /** Legacy / High-level sections */
   kpis?: KpiExportItem[];
-  sections: TableExportSection[];
+  sections?: TableExportSection[];
+  /** Modular free-form content blocks for maximum flexibility (paragraphs, key-values, headings, tables) */
+  blocks?: PdfContentBlock[];
   footerNote?: string;
 }
 
 export interface ExcelTabConfig {
   name: string;
-  title: string;
+  title?: string;
   subtitle?: string;
   kpis?: KpiExportItem[];
   headers: string[];
@@ -46,10 +68,22 @@ export interface ExcelTabConfig {
 export interface ExcelExportOptions {
   filename: string;
   brandName?: string;
+  themeColor?: string; // Hex color for header styling
   summaryTab?: ExcelTabConfig;
   detailTab?: ExcelTabConfig;
+  /** Standard multi-tab or single-tab config */
   tabs?: ExcelTabConfig[];
+  /** Shortcut for quick single-table export */
+  quickTable?: {
+    sheetName?: string;
+    headers: string[];
+    rows: (string | number)[][];
+  };
 }
+
+/* ==========================================================================
+   HELPERS
+   ========================================================================== */
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -60,8 +94,13 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
+/* ==========================================================================
+   EXPORT TO PDF
+   ========================================================================== */
+
 /**
- * Generates and directly downloads a high-resolution, beautifully styled PDF document
+ * Generates and directly downloads a high-resolution PDF document.
+ * Flexible: Supports simple text documents, key-value lists, or full executive report dashboards.
  */
 export async function exportToPdf(options: PdfExportOptions): Promise<void> {
   const dateStr = new Date().toLocaleDateString('es-ES', {
@@ -74,7 +113,9 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
 
   const brandName = options.brandName || 'EXECUTIVE OS';
   const brandTagline = options.brandTagline || 'REPORT GENERATOR';
+  const primaryColor = options.themeColor || '#16324F';
 
+  // Temporary off-screen container for rendering
   const container = document.createElement('div');
   container.style.position = 'absolute';
   container.style.top = '-9999px';
@@ -86,66 +127,84 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
   container.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
   container.style.color = '#102033';
 
+  // Build HTML Blocks
+  let contentHtml = '';
+
+  // 1. Render legacy/shorthand KPIs if present
+  if (options.kpis && options.kpis.length > 0) {
+    contentHtml += renderKpiGridHtml(options.kpis);
+  }
+
+  // 2. Render legacy/shorthand sections if present
+  if (options.sections && options.sections.length > 0) {
+    contentHtml += options.sections.map(sec => renderTableSectionHtml(sec, primaryColor)).join('');
+  }
+
+  // 3. Render modular content blocks if provided
+  if (options.blocks && options.blocks.length > 0) {
+    for (const block of options.blocks) {
+      switch (block.type) {
+        case 'paragraph':
+          contentHtml += `<p style="font-size:12px;line-height:1.6;color:${block.color || '#23395B'};margin:0 0 12px 0;${block.bold ? 'font-weight:700;' : ''}">${escapeHtml(block.text)}</p>`;
+          break;
+        case 'heading': {
+          const size = block.level === 1 ? '18px' : block.level === 2 ? '15px' : '13px';
+          contentHtml += `<h${block.level || 2} style="font-size:${size};font-weight:700;color:${primaryColor};margin:16px 0 8px 0;">${escapeHtml(block.text)}</h${block.level || 2}>`;
+          break;
+        }
+        case 'kv-list':
+          contentHtml += `
+            <div style="margin-bottom:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:12px 16px;">
+              ${block.title ? `<div style="font-size:11px;font-weight:700;color:${primaryColor};text-transform:uppercase;margin-bottom:8px;">${escapeHtml(block.title)}</div>` : ''}
+              <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px 16px;">
+                ${block.items.map(item => `
+                  <div style="font-size:11.5px;"><strong style="color:#4A5568;">${escapeHtml(item.label)}:</strong> <span style="color:#1A202C;">${escapeHtml(String(item.value))}</span></div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+          break;
+        case 'table':
+          contentHtml += renderTableSectionHtml(block.section, primaryColor);
+          break;
+        case 'kpis':
+          contentHtml += renderKpiGridHtml(block.items);
+          break;
+        case 'divider':
+          contentHtml += `<hr style="border:0;border-top:1px solid #E2E8F0;margin:16px 0;" />`;
+          break;
+        case 'space':
+          contentHtml += `<div style="height:${block.heightPx || 16}px;"></div>`;
+          break;
+      }
+    }
+  }
+
   container.innerHTML = `
     <!-- Header Banner -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #16324F;margin-bottom:22px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid ${primaryColor};margin-bottom:22px;">
       <div>
-        <div style="display:inline-block;background:#16324F;color:#ffffff;font-size:10px;font-weight:800;letter-spacing:0.8px;padding:4px 10px;border-radius:4px;margin-bottom:6px;text-transform:uppercase;">
+        <div style="display:inline-block;background:${primaryColor};color:#ffffff;font-size:10px;font-weight:800;letter-spacing:0.8px;padding:4px 10px;border-radius:4px;margin-bottom:6px;text-transform:uppercase;">
           ${escapeHtml(brandName)}
         </div>
-        <div style="font-size:24px;font-weight:700;color:#16324F;margin-bottom:4px;letter-spacing:-0.3px;">
+        <div style="font-size:24px;font-weight:700;color:${primaryColor};margin-bottom:4px;letter-spacing:-0.3px;">
           ${escapeHtml(options.title)}
         </div>
         ${options.subtitle ? `<div style="font-size:12.5px;color:#496074;font-weight:500;">${escapeHtml(options.subtitle)}</div>` : ''}
       </div>
       <div style="text-align:right;font-size:11px;color:#7D93A6;">
-        <strong style="display:block;color:#16324F;font-size:12px;margin-bottom:2px;">${escapeHtml(brandTagline)}</strong>
+        <strong style="display:block;color:${primaryColor};font-size:12px;margin-bottom:2px;">${escapeHtml(brandTagline)}</strong>
         <div>Fecha: ${dateStr}</div>
         ${options.generatedBy ? `<div>Emitido: ${escapeHtml(options.generatedBy)}</div>` : ''}
       </div>
     </div>
 
-    <!-- KPI Cards Grid -->
-    ${options.kpis && options.kpis.length > 0 ? `
-      <div style="display:grid;grid-template-columns:repeat(${Math.min(options.kpis.length, 4)}, 1fr);gap:12px;margin-bottom:22px;">
-        ${options.kpis.map(kpi => `
-          <div style="background:#F5FAFC;border:1px solid #D9E6EC;border-radius:10px;padding:12px 14px;position:relative;overflow:hidden;">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:${kpi.accentColor || '#2B73E0'};"></div>
-            <div style="font-size:10px;font-weight:700;color:#5A738E;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(kpi.label)}</div>
-            <div style="font-size:17px;font-weight:800;color:#0F2942;line-height:1.2;">${escapeHtml(kpi.value)}</div>
-            ${kpi.trend ? `<div style="font-size:10px;color:#057A55;font-weight:700;margin-top:4px;">${escapeHtml(kpi.trend)}</div>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    ` : ''}
-
-    <!-- Table Sections -->
-    ${options.sections.map(sec => `
-      <div style="margin-bottom:24px;">
-        ${sec.title ? `<div style="font-size:14px;font-weight:700;color:#16324F;margin-bottom:4px;border-left:3px solid #2B73E0;padding-left:8px;">${escapeHtml(sec.title)}</div>` : ''}
-        ${sec.subtitle ? `<div style="font-size:11px;color:#637C95;margin-bottom:8px;padding-left:11px;">${escapeHtml(sec.subtitle)}</div>` : ''}
-        
-        <table style="width:100%;border-collapse:separate;border-spacing:0;border-radius:8px;overflow:hidden;border:1px solid #D9E6EC;font-size:11px;">
-          <thead>
-            <tr style="background:#16324F;color:#ffffff;">
-              ${sec.headers.map(h => `<th style="padding:8px 10px;text-align:left;font-weight:700;font-size:10.5px;letter-spacing:0.3px;border-bottom:1px solid #0F253C;">${escapeHtml(h)}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${sec.rows.map((row, idx) => `
-              <tr style="background:${idx % 2 === 0 ? '#FFFFFF' : '#F7FAFC'};">
-                ${row.map(cell => `<td style="padding:7px 10px;border-bottom:1px solid #EAEFF4;color:#23395B;font-size:11px;">${escapeHtml(String(cell))}</td>`).join('')}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        ${sec.note ? `<div style="font-size:10px;color:#7A8E9F;font-style:italic;margin-top:4px;padding-left:4px;">* ${escapeHtml(sec.note)}</div>` : ''}
-      </div>
-    `).join('')}
+    <!-- Main Content Area -->
+    ${contentHtml}
 
     <!-- Footer -->
     <div style="margin-top:30px;padding-top:12px;border-top:1px solid #E1E9F0;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#899EAF;">
-      <div>${options.footerNote ? escapeHtml(options.footerNote) : 'Confidencial — Reporte automatizado.'}</div>
+      <div>${options.footerNote ? escapeHtml(options.footerNote) : 'Confidencial — Reporte generado automáticamente.'}</div>
       <div>Página 1 de 1</div>
     </div>
   `;
@@ -177,22 +236,79 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
   }
 }
 
+function renderKpiGridHtml(kpis: KpiExportItem[]): string {
+  return `
+    <div style="display:grid;grid-template-columns:repeat(${Math.min(kpis.length, 4)}, 1fr);gap:12px;margin-bottom:22px;">
+      ${kpis.map(kpi => `
+        <div style="background:#F5FAFC;border:1px solid #D9E6EC;border-radius:10px;padding:12px 14px;position:relative;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:${kpi.accentColor || '#2B73E0'};"></div>
+          <div style="font-size:10px;font-weight:700;color:#5A738E;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(kpi.label)}</div>
+          <div style="font-size:17px;font-weight:800;color:#0F2942;line-height:1.2;">${escapeHtml(kpi.value)}</div>
+          ${kpi.trend ? `<div style="font-size:10px;color:#057A55;font-weight:700;margin-top:4px;">${escapeHtml(kpi.trend)}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderTableSectionHtml(sec: TableExportSection, primaryColor: string): string {
+  return `
+    <div style="margin-bottom:24px;">
+      ${sec.title ? `<div style="font-size:14px;font-weight:700;color:${primaryColor};margin-bottom:4px;border-left:3px solid ${primaryColor};padding-left:8px;">${escapeHtml(sec.title)}</div>` : ''}
+      ${sec.subtitle ? `<div style="font-size:11px;color:#637C95;margin-bottom:8px;padding-left:11px;">${escapeHtml(sec.subtitle)}</div>` : ''}
+      
+      <table style="width:100%;border-collapse:separate;border-spacing:0;border-radius:8px;overflow:hidden;border:1px solid #D9E6EC;font-size:11px;">
+        <thead>
+          <tr style="background:${primaryColor};color:#ffffff;">
+            ${sec.headers.map(h => `<th style="padding:8px 10px;text-align:left;font-weight:700;font-size:10.5px;letter-spacing:0.3px;">${escapeHtml(h)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${sec.rows.map((row, idx) => `
+            <tr style="background:${idx % 2 === 0 ? '#FFFFFF' : '#F7FAFC'};">
+              ${row.map(cell => `<td style="padding:7px 10px;border-bottom:1px solid #EAEFF4;color:#23395B;font-size:11px;">${escapeHtml(String(cell))}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ${sec.note ? `<div style="font-size:10px;color:#7A8E9F;font-style:italic;margin-top:4px;padding-left:4px;">* ${escapeHtml(sec.note)}</div>` : ''}
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   EXPORT TO EXCEL
+   ========================================================================== */
+
 /**
- * Generates and downloads a binary .xlsx Excel Workbook with FULL RICH STYLING
+ * Generates and downloads a binary .xlsx Excel Workbook.
+ * Supports simple single-table quick exports OR rich multi-tab structured workbooks.
  */
 export async function exportToExcel(options: ExcelExportOptions): Promise<void> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = options.brandName || 'Executive Tools';
   workbook.created = new Date();
 
+  const primaryHeaderColor = options.themeColor ? options.themeColor.replace('#', '') : '16324F';
   const tabs: ExcelTabConfig[] = [];
 
+  // Support summaryTab, detailTab, or generic tabs
   if (options.summaryTab) tabs.push(options.summaryTab);
   if (options.detailTab) tabs.push(options.detailTab);
-  if (options.tabs && options.tabs.length > 0) tabs.push(...options.tabs);
+
+  // If user passed quickTable shortcut
+  if (options.quickTable) {
+    tabs.push({
+      name: options.quickTable.sheetName || 'Datos',
+      headers: options.quickTable.headers,
+      rows: options.quickTable.rows,
+    });
+  } else if (options.tabs && options.tabs.length > 0) {
+    tabs.push(...options.tabs);
+  }
 
   if (tabs.length === 0) {
-    throw new Error('At least one tab config is required for Excel export');
+    throw new Error('Debe proporcionar al menos una tabla o configuración de pestaña para exportar a Excel.');
   }
 
   for (const tabConfig of tabs) {
@@ -202,31 +318,34 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
 
     let currentRow = 1;
 
-    // Header Title
-    sheet.mergeCells(currentRow, 1, currentRow, Math.max(tabConfig.headers.length, 5));
-    const titleCell = sheet.getCell(currentRow, 1);
-    titleCell.value = `${options.brandName ? options.brandName.toUpperCase() + ' — ' : ''}${tabConfig.title}`;
-    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFF' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '16324F' } };
-    titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-    sheet.getRow(currentRow).height = 30;
+    // Optional Title Banner
+    if (tabConfig.title) {
+      sheet.mergeCells(currentRow, 1, currentRow, Math.max(tabConfig.headers.length, 5));
+      const titleCell = sheet.getCell(currentRow, 1);
+      titleCell.value = `${options.brandName ? options.brandName.toUpperCase() + ' — ' : ''}${tabConfig.title}`;
+      titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryHeaderColor } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      sheet.getRow(currentRow).height = 30;
+      currentRow++;
+    }
 
-    currentRow++;
-
-    // Subtitle
+    // Optional Subtitle
     if (tabConfig.subtitle) {
       sheet.mergeCells(currentRow, 1, currentRow, Math.max(tabConfig.headers.length, 5));
       const subCell = sheet.getCell(currentRow, 1);
-      subCell.value = `Subtítulo: ${tabConfig.subtitle} | Generado: ${new Date().toLocaleDateString('es-ES')}`;
+      subCell.value = `${tabConfig.subtitle} | Fecha: ${new Date().toLocaleDateString('es-ES')}`;
       subCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '496074' } };
       subCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
       sheet.getRow(currentRow).height = 20;
       currentRow++;
     }
 
-    currentRow++; // Empty spacing
+    if (tabConfig.title || tabConfig.subtitle) {
+      currentRow++; // Spacing line
+    }
 
-    // KPI Cards inside Excel (if provided)
+    // Optional KPI Cards
     if (tabConfig.kpis && tabConfig.kpis.length > 0) {
       tabConfig.kpis.forEach((kpi, index) => {
         const colStart = (index * 2) + 1;
@@ -242,7 +361,7 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
           sheet.mergeCells(currentRow + 1, colStart, currentRow + 1, colEnd);
           const kpiValueCell = sheet.getCell(currentRow + 1, colStart);
           kpiValueCell.value = kpi.value;
-          kpiValueCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: '16324F' } };
+          kpiValueCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: primaryHeaderColor } };
           kpiValueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F4F8' } };
           kpiValueCell.alignment = { horizontal: 'center', vertical: 'middle' };
         }
@@ -252,13 +371,13 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
       currentRow += 3;
     }
 
-    // Table Column Headers
+    // Column Headers Row
     const headerRow = sheet.getRow(currentRow);
     tabConfig.headers.forEach((h, i) => {
       const cell = headerRow.getCell(i + 1);
       cell.value = h;
       cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '16324F' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryHeaderColor } };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
       cell.border = {
         top: { style: 'thin', color: { argb: '0F253C' } },
@@ -276,7 +395,6 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
         cell.value = val;
         cell.font = { name: 'Calibri', size: 10, color: { argb: '102033' } };
 
-        // Alternating fill
         if (rowIndex % 2 === 1) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F7FAFC' } };
         }
@@ -291,7 +409,7 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
       currentRow++;
     });
 
-    // Auto-fit column widths
+    // Auto-fit Column Widths
     sheet.columns.forEach(col => {
       let maxLen = 12;
       col.eachCell!({ includeEmpty: false }, cell => {
@@ -304,7 +422,7 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
     });
   }
 
-  // Trigger browser binary download
+  // Trigger binary download in browser
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = window.URL.createObjectURL(blob);
