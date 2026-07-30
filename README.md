@@ -3,7 +3,18 @@
 Librería independiente de utilidades reutilizables (Exportadores a Excel y PDF con diseño enriquecido).
 
 ## 📦 Contenido
-- `exportService.ts`: Funciones `exportToExcel` y `exportToPdf` con soporte para tarjetas KPI, tablas estilizadas, colores corporativos y descargas automáticas binarias (usando `ExcelJS`, `html2canvas` y `jsPDF`).
+- `exportService.ts`: Funciones `exportToExcel` y `exportToPdf` con soporte para tarjetas KPI, tablas estilizadas, colores corporativos y descargas automáticas binarias.
+- `package.json`: Especifica en `peerDependencies` todas las librerías necesarias para hacer funcionar el módulo.
+
+---
+
+## 📋 Requisitos / Dependencias necesarias
+
+Este módulo requiere que el proyecto tenga instaladas las siguientes librerías (definidas en el `package.json` interno):
+
+```bash
+npm install exceljs html2canvas jspdf
+```
 
 ---
 
@@ -20,7 +31,8 @@ Con este método la carpeta `src/common-utils` vive en tu nuevo proyecto y puede
    git submodule add https://github.com/tu-usuario/common-utils.git src/common-utils
    ```
 
-2. **Asegurar dependencias en el `package.json` de tu nuevo proyecto:**
+2. **Instalar las dependencias que indica el `package.json` de `common-utils`:**
+   Al abrir la carpeta, tú o tu asistente de IA podéis ver el `package.json` de `common-utils` e instalar sus `peerDependencies`:
    ```bash
    npm install exceljs html2canvas jspdf
    ```
@@ -56,10 +68,11 @@ Si prefieres instalarlo como una dependencia de `npm` normal:
    }
    ```
 
-2. **Instalar dependencias necesarias:**
+2. **Instalar:**
    ```bash
-   npm install exceljs html2canvas jspdf
+   npm install
    ```
+   *NPM leerá automáticamente el `package.json` de `common-utils` e instalará las `peerDependencies` requeridas.*
 
 3. **Importar y usar:**
    ```typescript
