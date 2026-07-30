@@ -1,26 +1,15 @@
 # Common Utils Repo
 
-Librería independiente de utilidades reutilizables organizada por dominios.
+Librería compartida de utilidades reutilizables organizada por módulos independientes.
 
-## 📦 Estructura de Carpetas
+## 📦 Mapa de Módulos y Documentación
 
-```text
-common-utils/
-├── src/
-│   ├── exporters/      <-- PDF, Excel, CSV, etc. (`exportToPdf`, `exportToExcel`)
-│   ├── formatters/     <-- Fechas, números, monedas (`formatDate`, `formatCurrency`)
-│   ├── hooks/          <-- React Hooks compartidos
-│   └── helpers/        <-- Utilidades de validación y transformaciones
-├── index.ts            <-- Re-exportador global único (Barrel Export)
-├── package.json
-├── README.md
-└── USAGE.md
-```
+Cada módulo contiene su propio `README.md` con su guía de uso y ejemplos de código:
 
----
-
-## 📖 Guía Rápida de Uso
-Consulta el archivo **[`USAGE.md`](./USAGE.md)** para ver todos los ejemplos de código listos para copiar y pegar.
+- 📄 **[`src/exporters`](./src/exporters/README.md)**: Generación y exportación de archivos PDF y Excel (`exportToPdf`, `exportToExcel`).
+- 🔤 **[`src/formatters`](./src/formatters/README.md)**: Formateadores de fechas y moneda (`formatDate`, `formatCurrency`).
+- ⚓ **`src/hooks`**: Custom React Hooks compartidos (para futuras utilidades).
+- 🛠️ **`src/helpers`**: Funciones auxiliares genéricas y validaciones.
 
 ---
 
@@ -38,7 +27,7 @@ npm install exceljs html2canvas jspdf
 git submodule add https://github.com/sorrento/common-utils.git src/common-utils
 ```
 
-### Importación única en tus componentes:
+### Importación centralizada en tus componentes:
 ```typescript
 import { exportToExcel, exportToPdf, formatDate, formatCurrency } from './common-utils';
 ```
