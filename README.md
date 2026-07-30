@@ -10,6 +10,7 @@ Cada módulo contiene su propio `README.md` con su guía de uso y ejemplos de c�
 - 📊 **[`src/plots`](./src/plots/README.md)**: Componentes de visualización de datos SVG (`ColumnChart`, `DonutChart`).
 - 🎨 **[`src/icons`](./src/icons/README.md)**: Colección de iconos SVG y Logos configurable en React (`Icons`, `LogoSvg`).
 - 🪝 **[`src/hooks`](./src/hooks/README.md)**: Custom React Hooks reutilizables (`useLocalStorage`, `useDebounce`).
+- 🧱 **[`src/ui`](./src/ui/README.md)**: Componentes primitivos de UI (`Badge`, `Modal`).
 - 🔤 **[`src/formatters`](./src/formatters/README.md)**: Formateadores de fechas y moneda (`formatDate`, `formatCurrency`).
 - 🛠️ **`src/helpers`**: Funciones auxiliares genéricas y validaciones.
 
@@ -38,6 +39,8 @@ import {
   DonutChart, 
   Icons, 
   LogoSvg, 
+  Badge,
+  Modal,
   useLocalStorage, 
   useDebounce, 
   formatDate 
