@@ -4,6 +4,23 @@ Utilidades avanzadas y flexibles para la generación y descarga automática de a
 
 ---
 
+## 🌐 Idioma y Localización (`lang`)
+
+Tanto `exportToPdf` como `exportToExcel` aceptan el parámetro opcional **`lang`**:
+* **`'es'` (por defecto)**: Formatea fechas y etiquetas en español (`Fecha`, `Emitido`, `Página 1 de 1`, `Confidencial`).
+* **`'en'`**: Formatea fechas y etiquetas en inglés (`Date`, `Issued by`, `Page 1 of 1`, `Confidential`).
+
+```typescript
+// Ejemplo especificando idioma
+await exportToPdf({
+  lang: 'es', // Opcional (defecto 'es')
+  title: 'Reporte de Operaciones',
+  filename: 'reporte_es'
+});
+```
+
+---
+
 ## 📄 Exportar a PDF (`exportToPdf`)
 
 ### 1. PDF Simple (Texto y Listas Clave-Valor)
@@ -103,18 +120,59 @@ await exportToExcel({
     {
       name: 'Resumen',
       title: 'KPIs Principales',
-      headers: ['Concepto', 'Trimestre 1', 'Trimestre 2'],
+      headers: ['Concepto', 'Agent PDA ($)', 'Client Proforma ($)'],
+      // Detección automática de separadores de miles (#,##0 y #,##0.00) en columnas financieras y numéricas
       rows: [
-        ['Ingresos', '300.000 €', '350.000 €']
-      ]
-    },
-    {
-      name: 'Detalle',
-      headers: ['ID', 'Fecha', 'Monto'],
-      rows: [
-        ['TRX-001', '2026-06-01', '1.500 €']
+        ['Port dues', 56825, 56825],
+        ['Other / misc', 41327.54, 41327.54]
       ]
     }
   ]
 });
 ```
+
+---
+
+## 📝 Exportar a Word / DOC (`exportToDoc` / `exportToWord`)
+
+Permite la generación y descarga directa de documentos Word (`.doc`) totalmente formateados desde el navegador, sin dependencias pesadas y compatibles con Microsoft Word, Google Docs y LibreOffice.
+
+### 1. Documento Word Generador General
+```typescript
+import { exportToDoc } from '../../common-utils';
+
+await exportToDoc({
+  title: 'Paquete de Bill of Lading (BL)',
+  subtitle: 'Vessel: MT MARITIME HERO — Call Ref: NM-2026-0001',
+  brandName: 'NEW MARITIME HUB',
+  brandTagline: 'OPERATIONS OS',
+  themeColor: '#16324F',
+  filename: 'BL_Package_NM-2026-0001',
+  generatedBy: 'Operations Desk',
+  blocks: [
+    { type: 'heading', text: 'Datos Principales del Embarque', level: 1 },
+    {
+      type: 'kv-list',
+      title: 'Información de Flete',
+      items: [
+        { label: 'Shipper', value: 'Global Energy Trading Ltd' },
+        { label: 'Consignee', value: 'To Order' },
+        { label: 'Notify Party', value: 'MARITIME Desk' },
+        { label: 'Cargo Terms', value: 'Discharging at Algeciras' }
+      ]
+    },
+    { type: 'heading', text: 'Reglas de División (Split Rules)', level: 2 },
+    {
+      type: 'table',
+      section: {
+        headers: ['BL Ref', 'Parcela / Carga', 'Cantidad', 'Consignatario'],
+        rows: [
+          ['BL 1', 'LPG', '12,400 MT', 'To Order'],
+          ['BL 2', 'Gasoline', '5,700 MT', 'MARITIME Desk']
+        ]
+      }
+    }
+  ]
+});
+```
+

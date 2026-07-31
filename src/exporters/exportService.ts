@@ -40,7 +40,33 @@ export type PdfContentBlock =
   | { type: 'divider' }
   | { type: 'space'; heightPx?: number };
 
+export type ExportLanguage = 'es' | 'en';
+
+const I18N_LABELS: Record<ExportLanguage, {
+  date: string;
+  issued: string;
+  confidential: string;
+  page: string;
+  locale: string;
+}> = {
+  es: {
+    date: 'Fecha',
+    issued: 'Emitido',
+    confidential: 'Confidencial — Reporte generado automáticamente.',
+    page: 'Página 1 de 1',
+    locale: 'es-ES'
+  },
+  en: {
+    date: 'Date',
+    issued: 'Issued by',
+    confidential: 'Confidential — Automatically generated report.',
+    page: 'Page 1 of 1',
+    locale: 'en-US'
+  }
+};
+
 export interface PdfExportOptions {
+  lang?: ExportLanguage; // Language parameter, defaults to 'es'
   title: string;
   subtitle?: string;
   filename: string;
@@ -60,12 +86,15 @@ export interface ExcelTabConfig {
   name: string;
   title?: string;
   subtitle?: string;
+  themeColor?: string; // Optional hex color override per tab (e.g. '#0EA5E9' or '16324F')
+  columnFormats?: Record<number, string>; // Optional custom number formats by column index (e.g. { 1: '#,##0.00', 2: '#,##0' })
   kpis?: KpiExportItem[];
   headers: string[];
   rows: (string | number)[][];
 }
 
 export interface ExcelExportOptions {
+  lang?: ExportLanguage; // Language parameter, defaults to 'es'
   filename: string;
   brandName?: string;
   themeColor?: string; // Hex color for header styling
@@ -103,7 +132,10 @@ function escapeHtml(text: string): string {
  * Flexible: Supports simple text documents, key-value lists, or full executive report dashboards.
  */
 export async function exportToPdf(options: PdfExportOptions): Promise<void> {
-  const dateStr = new Date().toLocaleDateString('es-ES', {
+  const lang = options.lang || 'es';
+  const labels = I18N_LABELS[lang] || I18N_LABELS.es;
+
+  const dateStr = new Date().toLocaleDateString(labels.locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -194,8 +226,8 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
       </div>
       <div style="text-align:right;font-size:11px;color:#7D93A6;">
         <strong style="display:block;color:${primaryColor};font-size:12px;margin-bottom:2px;">${escapeHtml(brandTagline)}</strong>
-        <div>Fecha: ${dateStr}</div>
-        ${options.generatedBy ? `<div>Emitido: ${escapeHtml(options.generatedBy)}</div>` : ''}
+        <div>${labels.date}: ${dateStr}</div>
+        ${options.generatedBy ? `<div>${labels.issued}: ${escapeHtml(options.generatedBy)}</div>` : ''}
       </div>
     </div>
 
@@ -204,8 +236,8 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
 
     <!-- Footer -->
     <div style="margin-top:30px;padding-top:12px;border-top:1px solid #E1E9F0;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#899EAF;">
-      <div>${options.footerNote ? escapeHtml(options.footerNote) : 'Confidencial — Reporte generado automáticamente.'}</div>
-      <div>Página 1 de 1</div>
+      <div>${options.footerNote ? escapeHtml(options.footerNote) : labels.confidential}</div>
+      <div>${labels.page}</div>
     </div>
   `;
 
@@ -318,23 +350,29 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
 
     let currentRow = 1;
 
+    const rawColor = (tabConfig.themeColor || options.themeColor || '16324F').replace('#', '').trim();
+    const tabHeaderColor = rawColor.length === 6 ? 'FF' + rawColor : rawColor;
+    const numCols = Math.max(tabConfig.headers.length, 1);
+
     // Optional Title Banner
     if (tabConfig.title) {
-      sheet.mergeCells(currentRow, 1, currentRow, Math.max(tabConfig.headers.length, 5));
+      sheet.mergeCells(currentRow, 1, currentRow, numCols);
       const titleCell = sheet.getCell(currentRow, 1);
       titleCell.value = `${options.brandName ? options.brandName.toUpperCase() + ' — ' : ''}${tabConfig.title}`;
-      titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFF' } };
-      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryHeaderColor } };
+      titleCell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tabHeaderColor } };
       titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-      sheet.getRow(currentRow).height = 30;
+      sheet.getRow(currentRow).height = 28;
       currentRow++;
     }
 
     // Optional Subtitle
     if (tabConfig.subtitle) {
-      sheet.mergeCells(currentRow, 1, currentRow, Math.max(tabConfig.headers.length, 5));
+      const lang = options.lang || 'es';
+      const labels = I18N_LABELS[lang] || I18N_LABELS.es;
+      sheet.mergeCells(currentRow, 1, currentRow, numCols);
       const subCell = sheet.getCell(currentRow, 1);
-      subCell.value = `${tabConfig.subtitle} | Fecha: ${new Date().toLocaleDateString('es-ES')}`;
+      subCell.value = `${tabConfig.subtitle} | ${labels.date}: ${new Date().toLocaleDateString(labels.locale)}`;
       subCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '496074' } };
       subCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
       sheet.getRow(currentRow).height = 20;
@@ -377,7 +415,7 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
       const cell = headerRow.getCell(i + 1);
       cell.value = h;
       cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryHeaderColor } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tabHeaderColor } };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
       cell.border = {
         top: { style: 'thin', color: { argb: '0F253C' } },
@@ -387,12 +425,49 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
     headerRow.height = 24;
     currentRow++;
 
-    // Data Rows
+    // Data Rows with intelligent number formatting and alignment
     tabConfig.rows.forEach((rowValues, rowIndex) => {
       const r = sheet.getRow(currentRow);
       rowValues.forEach((val, i) => {
         const cell = r.getCell(i + 1);
-        cell.value = val;
+
+        const headerName = (tabConfig.headers[i] || '').toLowerCase();
+        const customFmt = tabConfig.columnFormats?.[i];
+        const isMoneyCol = customFmt != null ||
+                           headerName.includes('($)') ||
+                           headerName.includes('(€)') ||
+                           headerName.includes('(gbp)') ||
+                           headerName.includes('pda') ||
+                           headerName.includes('share') ||
+                           headerName.includes('margin') ||
+                           headerName.includes('amount') ||
+                           headerName.includes('cost') ||
+                           headerName.includes('proforma') ||
+                           headerName.includes('fee') ||
+                           headerName.includes('price') ||
+                           headerName.includes('monto') ||
+                           headerName.includes('precio');
+
+        let numValue: number | null = null;
+        if (typeof val === 'number') {
+          numValue = val;
+        } else if (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val.replace(',', '.')))) {
+          numValue = Number(val.replace(',', '.'));
+        }
+
+        if (numValue !== null) {
+          cell.value = numValue;
+          cell.alignment = { vertical: 'middle', horizontal: 'right' };
+          if (customFmt) {
+            cell.numFmt = customFmt;
+          } else if (isMoneyCol) {
+            cell.numFmt = Number.isInteger(numValue) ? '#,##0' : '#,##0.00';
+          }
+        } else {
+          cell.value = val;
+          cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        }
+
         cell.font = { name: 'Calibri', size: 10, color: { argb: '102033' } };
 
         if (rowIndex % 2 === 1) {
@@ -409,16 +484,21 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
       currentRow++;
     });
 
-    // Auto-fit Column Widths
-    sheet.columns.forEach(col => {
-      let maxLen = 12;
-      col.eachCell!({ includeEmpty: false }, cell => {
-        const val = String(cell.value || '');
-        if (val.length > maxLen && val.length < 50) {
-          maxLen = val.length;
+    // Auto-fit Column Widths precisely based on header and cell content (including thousand separators)
+    tabConfig.headers.forEach((h, colIdx) => {
+      let maxLen = h ? String(h).length : 10;
+      tabConfig.rows.forEach(row => {
+        const rawVal = row[colIdx];
+        let cellVal = rawVal != null ? String(rawVal) : '';
+        if (typeof rawVal === 'number') {
+          cellVal = rawVal.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(rawVal) ? 0 : 2 });
+        }
+        if (cellVal.length < 60) {
+          maxLen = Math.max(maxLen, cellVal.length);
         }
       });
-      col.width = maxLen + 4;
+      const col = sheet.getColumn(colIdx + 1);
+      col.width = Math.min(Math.max(maxLen + 4, 12), 42);
     });
   }
 
@@ -432,3 +512,166 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
   a.click();
   window.URL.revokeObjectURL(url);
 }
+
+/* ==========================================================================
+   EXPORT TO WORD (DOC)
+   ========================================================================== */
+
+export type DocExportOptions = PdfExportOptions;
+
+/**
+ * Generates and directly downloads a rich Microsoft Word (.doc) document.
+ * Universal and zero-dependency: works seamlessly across modern browsers and Word processors.
+ */
+export async function exportToDoc(options: DocExportOptions): Promise<void> {
+  const lang = options.lang || 'es';
+  const labels = I18N_LABELS[lang] || I18N_LABELS.es;
+
+  const dateStr = new Date().toLocaleDateString(labels.locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const brandName = options.brandName || 'EXECUTIVE OS';
+  const brandTagline = options.brandTagline || 'REPORT GENERATOR';
+  const primaryColor = options.themeColor || '#16324F';
+
+  let contentHtml = '';
+
+  // 1. Render KPIs
+  if (options.kpis && options.kpis.length > 0) {
+    contentHtml += renderKpiGridHtml(options.kpis);
+  }
+
+  // 2. Render sections
+  if (options.sections && options.sections.length > 0) {
+    contentHtml += options.sections.map(sec => renderTableSectionHtml(sec, primaryColor)).join('');
+  }
+
+  // 3. Render modular content blocks
+  if (options.blocks && options.blocks.length > 0) {
+    for (const block of options.blocks) {
+      switch (block.type) {
+        case 'paragraph':
+          contentHtml += `<p style="font-size:11pt;font-family:'Calibri',sans-serif;line-height:1.5;color:${block.color || '#23395B'};margin:0 0 10pt 0;${block.bold ? 'font-weight:bold;' : ''}">${escapeHtml(block.text)}</p>`;
+          break;
+        case 'heading': {
+          const size = block.level === 1 ? '16pt' : block.level === 2 ? '13pt' : '11pt';
+          contentHtml += `<h${block.level || 2} style="font-size:${size};font-family:'Calibri',sans-serif;font-weight:bold;color:${primaryColor};margin:12pt 0 6pt 0;">${escapeHtml(block.text)}</h${block.level || 2}>`;
+          break;
+        }
+        case 'kv-list':
+          contentHtml += `
+            <div style="margin-bottom:12pt;background:#F8FAFC;border:1px solid #E2E8F0;padding:10pt 12pt;">
+              ${block.title ? `<div style="font-size:10pt;font-family:'Calibri',sans-serif;font-weight:bold;color:${primaryColor};text-transform:uppercase;margin-bottom:6pt;">${escapeHtml(block.title)}</div>` : ''}
+              <table style="width:100%;border-collapse:collapse;font-family:'Calibri',sans-serif;font-size:10.5pt;">
+                ${block.items.map(item => `
+                  <tr>
+                    <td style="padding:4pt 6pt;font-weight:bold;color:#4A5568;width:35%;border-bottom:1px solid #EDF2F7;">${escapeHtml(item.label)}</td>
+                    <td style="padding:4pt 6pt;color:#1A202C;border-bottom:1px solid #EDF2F7;">${escapeHtml(String(item.value))}</td>
+                  </tr>
+                `).join('')}
+              </table>
+            </div>
+          `;
+          break;
+        case 'table':
+          contentHtml += renderTableSectionHtml(block.section, primaryColor);
+          break;
+        case 'kpis':
+          contentHtml += renderKpiGridHtml(block.items);
+          break;
+        case 'divider':
+          contentHtml += `<hr style="border:0;border-top:1px solid #E2E8F0;margin:12pt 0;" />`;
+          break;
+        case 'space':
+          contentHtml += `<div style="height:${block.heightPx || 16}px;"></div>`;
+          break;
+      }
+    }
+  }
+
+  const docHtml = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>${escapeHtml(options.title)}</title>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Print</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        @page {
+          size: A4;
+          margin: 2.54cm 2.54cm 2.54cm 2.54cm;
+        }
+        body {
+          font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+          color: #102033;
+          font-size: 11pt;
+          line-height: 1.4;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 12pt;
+        }
+        th, td {
+          font-family: 'Calibri', sans-serif;
+        }
+      </style>
+    </head>
+    <body>
+      <!-- Header Banner -->
+      <table style="width:100%;border-bottom:2px solid ${primaryColor};margin-bottom:16pt;padding-bottom:8pt;">
+        <tr>
+          <td style="vertical-align:top;">
+            <div style="background:${primaryColor};color:#ffffff;font-size:9pt;font-weight:bold;letter-spacing:0.5pt;padding:3pt 8pt;display:inline-block;border-radius:3pt;text-transform:uppercase;">
+              ${escapeHtml(brandName)}
+            </div>
+            <div style="font-size:18pt;font-weight:bold;color:${primaryColor};margin-top:4pt;">
+              ${escapeHtml(options.title)}
+            </div>
+            ${options.subtitle ? `<div style="font-size:11pt;color:#496074;">${escapeHtml(options.subtitle)}</div>` : ''}
+          </td>
+          <td style="vertical-align:top;text-align:right;font-size:9.5pt;color:#7D93A6;">
+            <strong style="color:${primaryColor};font-size:10.5pt;">${escapeHtml(brandTagline)}</strong><br/>
+            ${labels.date}: ${dateStr}<br/>
+            ${options.generatedBy ? `${labels.issued}: ${escapeHtml(options.generatedBy)}` : ''}
+          </td>
+        </tr>
+      </table>
+
+      <!-- Main Content -->
+      ${contentHtml}
+
+      <!-- Footer -->
+      <table style="width:100%;margin-top:20pt;border-top:1px solid #E1E9F0;padding-top:8pt;font-size:9pt;color:#899EAF;">
+        <tr>
+          <td>${options.footerNote ? escapeHtml(options.footerNote) : labels.confidential}</td>
+          <td style="text-align:right;">${labels.page}</td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = options.filename.endsWith('.doc') || options.filename.endsWith('.docx') ? options.filename : `${options.filename}.doc`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+export const exportToWord = exportToDoc;
+

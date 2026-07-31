@@ -36,3 +36,31 @@ function Example() {
   );
 }
 ```
+
+---
+
+## 🔔 Sistema de Notificaciones (`ToastProvider`, `useToast`, `notify`)
+
+Permite mostrar notificaciones flotantes modernas (Toasts) con animaciones, íconos temáticos (success, info, warning, error) y barra de progreso.
+
+### Uso con Hook o Helper Imperativo
+
+```tsx
+import { ToastProvider, useToast, notify } from '../../common-utils';
+
+// 1. Envolver la aplicación en App.tsx:
+<ToastProvider>
+  <AppContent />
+</ToastProvider>
+
+// 2. Usar mediante hook en cualquier componente:
+const { notify } = useToast();
+notify.success('PDA procesada correctamente', 'Éxito');
+notify.info('Información del buque actualizada');
+notify.warning('Discrepancia en tarifa detectada', 'Advertencia');
+notify.error('No se pudo conectar con el servidor', 'Error');
+
+// 3. O usar la función imperativa exportada en cualquier lugar:
+notify.success('Operación completada');
+```
+
