@@ -240,6 +240,28 @@ export async function handleUniversalReaderRequest(
 }
 
 /**
+ * Normalizes destinations parameter: accepts arrays or wrapper JSON objects ({ document_destinations: [...] } or { destinations: [...] })
+ */
+export function normalizeDestinations(input?: any): ClassificationDestination[] {
+  if (!input) return [];
+  if (Array.isArray(input)) return input;
+  if (Array.isArray(input.document_destinations)) return input.document_destinations;
+  if (Array.isArray(input.destinations)) return input.destinations;
+  return [];
+}
+
+/**
+ * Normalizes schemas parameter: accepts schema maps or wrapper JSON objects ({ schemas: { ... } })
+ */
+export function normalizeSchemas(input?: any): Record<string, GenericExtractionSchema | Record<string, any>> {
+  if (!input) return {};
+  if (input.schemas && typeof input.schemas === 'object' && !('type' in input.schemas)) {
+    return input.schemas;
+  }
+  return input;
+}
+
+/**
  * Instantiable Universal Reader Engine
  * Supports execution via secure Cloud Function proxy (functionUrl) OR direct API Key.
  */
@@ -260,8 +282,8 @@ export class UniversalReaderEngine {
     this.systemRole = config.systemRole || 'You are an expert AI document classifier and entity extractor.';
     this.metadataFields = config.metadataFields || [];
     this.fieldWeights = config.fieldWeights || {};
-    this.destinations = config.destinations || [];
-    this.schemas = config.schemas || {};
+    this.destinations = normalizeDestinations(config.destinations);
+    this.schemas = normalizeSchemas(config.schemas);
   }
 
   /**

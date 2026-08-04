@@ -6,6 +6,7 @@ Librería compartida de utilidades reutilizables organizada por módulos indepen
 
 Cada módulo contiene su propio `README.md` con su guía de uso y ejemplos de código:
 
+- 🤖 **[`src/ai`](./src/ai/UNIVERSAL_READER_POOL.md)**: Motor de clasificación multimodal y extracción estructurada multiturno con Gemini (`UniversalReaderEngine`, `geminiParser`).
 - 📄 **[`src/exporters`](./src/exporters/README.md)**: Generación y exportación de archivos PDF y Excel (`exportToPdf`, `exportToExcel`).
 - 📊 **[`src/plots`](./src/plots/README.md)**: Componentes de visualización de datos SVG (`ColumnChart`, `DonutChart`).
 - 🎨 **[`src/icons`](./src/icons/README.md)**: Colección de iconos SVG y Logos configurable en React (`Icons`, `LogoSvg`).
@@ -33,6 +34,7 @@ git submodule add https://github.com/sorrento/common-utils.git src/common-utils
 ### Importación centralizada en tus componentes:
 ```typescript
 import { 
+  UniversalReaderEngine,
   exportToExcel, 
   exportToPdf, 
   ColumnChart, 
@@ -45,4 +47,15 @@ import {
   useDebounce, 
   formatDate 
 } from './common-utils';
+
+// Ejemplo: Instanciar Lector Universal leyendo JSONs locales de tu proyecto
+import destinationsJson from '@/data/documentDestinations.json';
+import schemasJson from '@/data/extractionSchemas.json';
+
+const readerEngine = new UniversalReaderEngine({
+  apiKey: process.env.VITE_GEMINI_API_KEY,
+  modelName: 'gemini-2.0-flash',
+  destinations: destinationsJson,
+  schemas: schemasJson
+});
 ```
