@@ -385,8 +385,9 @@ export class UniversalReaderEngine {
         ];
 
     const formattedList = fullDestinations
-      .map(d => `- ID: "${d.id}" | Name: "${d.name}" | Description: ${d.description}`)
+      .map(d => `- ID "${d.id}": ${d.description}`)
       .join('\n');
+
 
     const metadataFieldsSchema = metadataFields.length > 0
       ? metadataFields.map(f => `    "${f}": "string or null"`).join(',\n')
