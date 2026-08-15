@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "properties": {
+    "vessel": { "type": "string", "description": "Name of the vessel" },
+    "imo": { "type": "string", "description": "IMO number if present" },
+    "subagent": { "type": "string", "description": "Local agent or subagent issuing the PDA" },
+    "port": { "type": "string", "description": "Port name" },
+    "product": { "type": "string", "description": "Cargo / Product type" },
+    "quantity": { "type": "string", "description": "Cargo quantity with units" },
+    "eta": { "type": "string", "description": "ETA timestamp or date string" },
+    "lineItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "concept": { "type": "string", "description": "Expense item concept name" },
+          "amount": { "type": "number", "description": "Expense amount in USD" }
+        },
+        "required": ["concept", "amount"]
+      }
+    },
+    "totalPda": { "type": "number", "description": "Grand total amount in USD" }
+  },
+  "required": ["vessel", "port", "lineItems", "totalPda"]
+}

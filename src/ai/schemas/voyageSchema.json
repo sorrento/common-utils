@@ -1,0 +1,34 @@
+{
+  "type": "object",
+  "properties": {
+    "vessel": { "type": "string", "description": "Name of the vessel (e.g. MV ATLANTIC PIONEER)" },
+    "imo": { "type": "string", "description": "IMO number if present (e.g. 9481920)" },
+    "voyage": { "type": "string", "description": "Voyage number or code (e.g. VY-2025-035)" },
+    "charterer": { "type": "string", "description": "Charterer company name (e.g. Cargill International SA)" },
+    "cargo": { "type": "string", "description": "Cargo type description (e.g. Milling Wheat in Bulk)" },
+    "quantity": { "type": "string", "description": "Cargo quantity with units (e.g. 28,500 MT)" },
+    "laycan": { "type": "string", "description": "Laycan dates or ETA/ETD window" },
+    
+    "loadingPort": { "type": "string", "description": "Loading port name and country (e.g. Piraeus, Greece)" },
+    "loadingAgent": { "type": "string", "description": "Nominated agent name at loading port" },
+    "loadingAgentEmail": { "type": "string", "description": "Agent contact email at loading port" },
+    "loadingEta": { "type": "string", "description": "Loading port ETA date (e.g. 2025-06-03)" },
+    "loadingEtd": { "type": "string", "description": "Loading port ETD date (e.g. 2025-06-05)" },
+    
+    "dischPort1": { "type": "string", "description": "First discharge port name and country (e.g. Iskenderun, Turkey)" },
+    "disch1Agent": { "type": "string", "description": "Nominated agent name at 1st discharge port" },
+    "disch1AgentEmail": { "type": "string", "description": "Agent contact email at 1st discharge port" },
+    "disch1Eta": { "type": "string", "description": "1st discharge port ETA date (e.g. 2025-06-08)" },
+    "disch1Etd": { "type": "string", "description": "1st discharge port ETD date (e.g. 2025-06-10)" },
+
+    "dischPort2": { "type": "string", "description": "Second discharge port name and country if any" },
+    "disch2Agent": { "type": "string", "description": "Nominated agent name at 2nd discharge port" },
+    "disch2AgentEmail": { "type": "string", "description": "Agent contact email at 2nd discharge port" },
+    "disch2Eta": { "type": "string", "description": "2nd discharge port ETA date (e.g. 2025-06-15)" },
+    "disch2Etd": { "type": "string", "description": "2nd discharge port ETD date (e.g. 2025-06-18)" },
+    
+    "demurrageRate": { "type": "string", "description": "Demurrage rate per day (e.g. USD 14,500/day)" },
+    "despatchRate": { "type": "string", "description": "Despatch rate per day (e.g. USD 7,250/day)" }
+  },
+  "required": ["vessel", "voyage", "loadingPort", "dischPort1"]
+}

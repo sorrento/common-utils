@@ -20,43 +20,7 @@ export interface GeminiDocumentParserOptions {
   model?: string;
 }
 
-/**
- * Standard prompt template for Proforma Disbursement Account (PDA) extraction
- */
-export const PDA_EXTRACTION_PROMPT = `
-You are an expert maritime shipping assistant. Analyze the attached Proforma Disbursement Account (PDA) PDF document.
-Extract all key vessel and financial data into a clean JSON structure matching the requested schema.
-Be exact with monetary figures, currency amounts, vessel names, ports, and line item concepts.
-`.trim();
 
-/**
- * Standard JSON Schema definition for PDA extraction
- */
-export const PDA_JSON_SCHEMA = {
-  type: 'object',
-  properties: {
-    vessel: { type: 'string', description: 'Name of the vessel' },
-    imo: { type: 'string', description: 'IMO number if present' },
-    subagent: { type: 'string', description: 'Local agent or subagent issuing the PDA' },
-    port: { type: 'string', description: 'Port name' },
-    product: { type: 'string', description: 'Cargo / Product type' },
-    quantity: { type: 'string', description: 'Cargo quantity with units' },
-    eta: { type: 'string', description: 'ETA timestamp or date string' },
-    lineItems: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          concept: { type: 'string', description: 'Expense item concept name' },
-          amount: { type: 'number', description: 'Expense amount in USD' }
-        },
-        required: ['concept', 'amount']
-      }
-    },
-    totalPda: { type: 'number', description: 'Grand total amount in USD' }
-  },
-  required: ['vessel', 'port', 'lineItems', 'totalPda']
-};
 
 /**
  * Executes a structured document extraction request using the Gemini REST API.
@@ -71,7 +35,7 @@ export async function parseDocumentWithGemini<T = Record<string, any>>(
     mimeType = 'application/pdf',
     prompt,
     jsonSchema,
-    model = 'gemini-1.5-flash'
+    model = (typeof process !== 'undefined' && process.env?.GEMINI_MODEL) || 'gemini-2.0-flash-lite'
   } = options;
 
   let base64Data: string;
