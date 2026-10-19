@@ -9,3 +9,4 @@ export * from './src/icons';
 export * from './src/hooks';
 export * from './src/ui';
 export * from './src/ai';
+export * from './src/auth';
