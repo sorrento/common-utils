@@ -50,9 +50,20 @@ export const CorporateWhitelistManager: React.FC<CorporateWhitelistManagerProps>
   const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = userService.subscribeAllUsers((userList) => {
+    // Asegurar que los superAdmins definidos en código aparezcan en la lista
+    userService.seedSuperAdmins().catch(err => {
+      console.warn('Error auto-seeding super admins:', err);
+    });
+
+    const unsubscribe = userService.subscribeAllUsers((userList, err) => {
       setUsers(userList);
       setLoading(false);
+      if (err) {
+        setFeedback({
+          type: 'error',
+          text: `Error de permisos o conexión en Firestore: ${err?.message || err}`
+        });
+      }
     });
     return () => unsubscribe();
   }, [userService]);

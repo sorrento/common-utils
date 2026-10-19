@@ -30,18 +30,27 @@ export const CorporateAuthGate: React.FC<CorporateAuthGateProps> = ({
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '99px',
-            background: isDark ? 'rgba(2, 132, 199, 0.2)' : 'var(--ink, #10201d)',
-            color: isDark ? '#38bdf8' : 'var(--teal, #00bfa8)',
-            display: 'inline-grid',
-            placeItems: 'center',
-            fontWeight: 900,
-            fontSize: '22px',
-            marginBottom: '16px'
+            width: '64px',
+            height: '64px',
+            borderRadius: '16px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #dbe6e3',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '16px',
+            boxShadow: '0 4px 16px rgba(16, 32, 29, 0.08)',
+            overflow: 'hidden'
           }}>
-            {tenantConfig.appName.substring(0, 2)}
+            <img
+              src="/aida-logo.jpg"
+              alt={tenantConfig.appName}
+              style={{
+                width: '56px',
+                height: '56px',
+                objectFit: 'contain'
+              }}
+            />
           </div>
           <div style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#ffffff' : 'var(--ink, #10201d)', marginBottom: '6px' }}>
             Cargando {tenantConfig.appName}...

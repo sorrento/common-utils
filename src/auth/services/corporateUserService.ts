@@ -184,14 +184,44 @@ export class CorporateUserService {
     });
   }
 
-  subscribeAllUsers(callback: (users: UserProfile[]) => void): () => void {
+  subscribeAllUsers(callback: (users: UserProfile[], err?: any) => void): () => void {
     const q = query(collection(this.db, USERS_COLLECTION));
     return onSnapshot(q, (snap) => {
       const users = snap.docs.map(d => ({ ...d.data(), id: d.id } as UserProfile));
       callback(users);
     }, (err) => {
       console.error('Error escuchando usuarios:', err);
+      callback([], err);
     });
+  }
+
+  /**
+   * Asegura que todos los superAdmins estén pre-registrados en la colección users
+   */
+  async seedSuperAdmins(): Promise<void> {
+    for (const email of this.superAdmins) {
+      const normalizedEmail = email.toLowerCase().trim();
+      const qEmail = query(collection(this.db, USERS_COLLECTION), where('email', '==', normalizedEmail));
+      const querySnap = await getDocs(qEmail);
+
+      if (querySnap.empty) {
+        const tempId = `admin_${normalizedEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const adminEntry: UserProfile = {
+          id: tempId,
+          email: normalizedEmail,
+          name: formatNameFromEmail(normalizedEmail),
+          role: 'Admin',
+          status: 'approved',
+          companyName: this.tenant.companyName,
+          department: 'Executive Administration',
+          avatar: '👤',
+          createdAt: new Date().toISOString(),
+          approvedAt: new Date().toISOString(),
+          approvedBy: 'System (SuperAdmin)'
+        };
+        await setDoc(doc(this.db, USERS_COLLECTION, tempId), adminEntry);
+      }
+    }
   }
 
   async addToWhitelist(params: {

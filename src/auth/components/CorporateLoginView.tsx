@@ -77,20 +77,27 @@ export const CorporateLoginView: React.FC = () => {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '999px',
-            backgroundColor: isDark ? 'rgba(2, 132, 199, 0.15)' : 'var(--ink, #10201d)',
-            color: isDark ? '#38bdf8' : 'var(--teal, #00bfa8)',
+            width: '76px',
+            height: '76px',
+            borderRadius: '18px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #dbe6e3',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '26px',
-            fontWeight: 900,
             marginBottom: '1rem',
-            boxShadow: '0 8px 24px rgba(16, 32, 29, 0.15)'
+            boxShadow: '0 8px 24px rgba(16, 32, 29, 0.08)',
+            overflow: 'hidden'
           }}>
-            {tenantConfig.appName.substring(0, 2)}
+            <img
+              src="/aida-logo.jpg"
+              alt={tenantConfig.appName}
+              style={{
+                width: '68px',
+                height: '68px',
+                objectFit: 'contain'
+              }}
+            />
           </div>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 900, color: isDark ? '#ffffff' : 'var(--ink, #10201d)', letterSpacing: '-0.03em', margin: 0 }}>
             {tenantConfig.appName}
